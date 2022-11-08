@@ -4,51 +4,57 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.util.List;
+import java.util.Map;
 
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.automationpitstiop.model.TestCase;
 import org.automationpitstiop.model.TestSuite;
+import org.automationpitstop.common.ReporterException;
+import org.automationpitstop.utils.CommonUtils;
 import org.automationpitstop.utils.ExtentUtils;
 import org.automationpitstop.utils.XmlUtils;
 
 import com.aventstack.extentreports.ExtentReports;
 import com.aventstack.extentreports.ExtentTest;
-import com.aventstack.extentreports.GherkinKeyword;
 import com.aventstack.extentreports.Status;
-import com.aventstack.extentreports.gherkin.model.And;
-import com.aventstack.extentreports.gherkin.model.Feature;
-import com.aventstack.extentreports.gherkin.model.Given;
-import com.aventstack.extentreports.gherkin.model.Scenario;
-import com.aventstack.extentreports.gherkin.model.Then;
-import com.aventstack.extentreports.gherkin.model.When;
-import com.aventstack.extentreports.markuputils.CodeLanguage;
 import com.aventstack.extentreports.markuputils.ExtentColor;
 import com.aventstack.extentreports.markuputils.MarkupHelper;
 
 public class Main {
 
 	private static Logger logger = Logger.getLogger(Main.class.getName());
-	private static final String EXTENT_REPORT_NAME = "extent.html";
-	private static final String RESULT_OUTPUT_PATH = "target" + System.getProperty("file.separator") + "reports";
-	private static final String WORKING_DIR_FULL_PATH = System.getProperty("user.dir")
-			+ System.getProperty("file.separator");
+	
+	private static String REPORT_NAME;
+	private static String OUTPUT_FOLDER_PATH;
+	private static String JUNIT_XML_FILE_PATH;
+	private static String JUNIT_XML_FOLDER_PATH;
+	
+//	private static final String WORKING_DIR_FULL_PATH = System.getProperty("user.dir") + System.getProperty("file.separator");
+//	private static String junitXmlRelativePath = "target" + System.getProperty("file.separator")
+//			+ "surefire-reports" + System.getProperty("file.separator")
+//			+ "TEST-com.automation.pitstop.selenium_demo.HelloWorldChromeJupiter2Test.xml";
+//	private static String testResultFileAbsolutePath = WORKING_DIR_FULL_PATH + junitXmlRelativePath;
 
-	private static String testResultFileRelativePath = "target" + System.getProperty("file.separator")
-			+ "surefire-reports" + System.getProperty("file.separator")
-			+ "TEST-com.automation.pitstop.selenium_demo.HelloWorldChromeJupiter2Test.xml";
-	private static String testResultFileAbsolutePath = WORKING_DIR_FULL_PATH + testResultFileRelativePath;
-
-	public static void main(String[] args) throws URISyntaxException, IOException, ClassNotFoundException {
+	public static void main(String[] args) throws URISyntaxException, IOException, ClassNotFoundException, ReporterException {
+		
 		logger.info("Execution started");
+		Map<String, String> contextMap = CommonUtils.createContextFromPropeties("application.properties");
+		
+		JUNIT_XML_FILE_PATH = CommonUtils.getOverriddenProperty("junit.xml.file.path", contextMap);
+		JUNIT_XML_FOLDER_PATH = CommonUtils.getOverriddenProperty("junit.xml.folder.path", contextMap);
+		OUTPUT_FOLDER_PATH = CommonUtils.getOverriddenProperty("output.folder.path", contextMap);
+		REPORT_NAME = StringUtils.defaultIfBlank(CommonUtils.getOverriddenProperty("report.name", contextMap), "extent.html");
 
 		// Validate VMs and initialize required variables
 		validateVmArgs(args);
 
+		checkForMandatoryParams();
+		
 		// Check and create if target folder does not exist
-		createOutputFolder(RESULT_OUTPUT_PATH);
+		createOutputFolder(OUTPUT_FOLDER_PATH);
 
-		TestSuite testSuite = XmlUtils.parseJunitXml(new File(testResultFileRelativePath));
+		TestSuite testSuite = XmlUtils.parseJunitXml(new File(JUNIT_XML_FILE_PATH));
 		List<TestCase> testCaseList = testSuite.getTestCaseList();
 
 		if (testCaseList.size() == 0) {
@@ -57,8 +63,7 @@ public class Main {
 		}
 
 		// Create Extent Report
-		ExtentReports extent = ExtentUtils
-				.getExtentReports(RESULT_OUTPUT_PATH + System.getProperty("file.separator") + EXTENT_REPORT_NAME);
+		ExtentReports extent = ExtentUtils.getExtentReports(OUTPUT_FOLDER_PATH + System.getProperty("file.separator") + REPORT_NAME);
 		
 		ExtentTest test = null;
 
@@ -93,13 +98,14 @@ public class Main {
 		}
 
 		extent.flush();
-		logger.info("Extent report created at :" + RESULT_OUTPUT_PATH + System.getProperty("file.separator")
-				+ EXTENT_REPORT_NAME);
+		logger.info("Extent report created at : " + OUTPUT_FOLDER_PATH + System.getProperty("file.separator")
+				+ REPORT_NAME);
 
 	}
 
 	private static void createOutputFolder(String resultOutputPath) {
-		File directory = new File(WORKING_DIR_FULL_PATH + resultOutputPath);
+//		File directory = new File(WORKING_DIR_FULL_PATH + resultOutputPath);
+		File directory = new File(resultOutputPath);
 		if (!directory.exists()) {
 			directory.mkdir();
 		}
@@ -114,6 +120,10 @@ public class Main {
 	}
 
 	private static void checkForMandatoryParams() {
-		logger.info("Executing service with the following parameters" + "\n-D");
+		logger.info("Executing service with the following parameters" + "\n");
+		System.out.println("junit.xml.folder.path : "+ JUNIT_XML_FILE_PATH);
+		System.out.println("junit.xml.file.path : "+ JUNIT_XML_FOLDER_PATH);
+		System.out.println("output.folder.path : "+ OUTPUT_FOLDER_PATH);
+		System.out.println("report.name : "+ REPORT_NAME);
 	}
 }
